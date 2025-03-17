@@ -8,18 +8,24 @@ export default function GoalAnalysis() {
   const [team2, setTeam2] = useState("");
   const [capital, setCapital] = useState("");
   const [data, setData] = useState(null);
+  const [teamSuggestions, setTeamSuggestions] = useState([]);
+  const [selectedTeam, setSelectedTeam] = useState(null);
 
   const API_KEY = "SUA_CHAVE_DE_API";
 
-  const fetchTeamData = async (teamName) => {
-    const teamResponse = await fetch(`https://v3.football.api-sports.io/teams?search=${teamName}`, {
+  const searchTeams = async (query, setTeam) => {
+    if (query.length < 3) return;
+    const response = await fetch(`https://v3.football.api-sports.io/teams?search=${query}`, {
       method: "GET",
       headers: { "x-apisports-key": API_KEY },
     });
-    const teamData = await teamResponse.json();
-    if (teamData.response.length === 0) return null;
-    const teamId = teamData.response[0].team.id;
+    const data = await response.json();
+    if (data.response.length > 0) {
+      setTeamSuggestions(data.response);
+    }
+  };
 
+  const fetchTeamData = async (teamId) => {
     const matchesResponse = await fetch(`https://v3.football.api-sports.io/fixtures?team=${teamId}&last=10`, {
       method: "GET",
       headers: { "x-apisports-key": API_KEY },
@@ -35,12 +41,13 @@ export default function GoalAnalysis() {
     const stddev = Math.sqrt(variance);
     const bttsProbability = goalsFor.filter(g => g > 0).length / goalsFor.length;
 
-    return { team: teamName, averageFor, averageAgainst, stddev, goalsFor, goalsAgainst, bttsProbability };
+    return { team: selectedTeam, averageFor, averageAgainst, stddev, goalsFor, goalsAgainst, bttsProbability };
   };
 
   const analyzeTeams = async () => {
-    const team1Data = await fetchTeamData(team1);
-    const team2Data = await fetchTeamData(team2);
+    if (!selectedTeam) return alert("Selecione um time válido!");
+    const team1Data = await fetchTeamData(selectedTeam.id);
+    const team2Data = await fetchTeamData(selectedTeam.id);
     if (!team1Data || !team2Data) return alert("Time não encontrado!");
     setData([team1Data, team2Data]);
   };
@@ -49,8 +56,23 @@ export default function GoalAnalysis() {
     <div className="p-6 max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold mb-4 text-center">Análise de Gols</h1>
       <div className="flex flex-col gap-4 mb-4">
-        <Input placeholder="Digite o nome do Time 1" value={team1} onChange={(e) => setTeam1(e.target.value)} />
-        <Input placeholder="Digite o nome do Time 2" value={team2} onChange={(e) => setTeam2(e.target.value)} />
+        <Input 
+          placeholder="Digite o nome do Time 1"
+          value={team1}
+          onChange={(e) => {
+            setTeam1(e.target.value);
+            searchTeams(e.target.value, setSelectedTeam);
+          }}
+        />
+        {teamSuggestions.length > 0 && (
+          <ul className="border p-2 rounded bg-white">
+            {teamSuggestions.map((team) => (
+              <li key={team.team.id} className="cursor-pointer p-1 hover:bg-gray-200" onClick={() => setSelectedTeam(team.team)}>
+                {team.team.name}
+              </li>
+            ))}
+          </ul>
+        )}
         <Input placeholder="Capital disponível" type="number" value={capital} onChange={(e) => setCapital(e.target.value)} />
         <Button onClick={analyzeTeams} className="bg-blue-500 text-white p-2 rounded">Analisar</Button>
       </div>
