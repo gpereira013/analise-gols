@@ -1,5 +1,3 @@
-// Atualização para forçar redeploy
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,13 +7,14 @@ export default function GoalAnalysis() {
   const [team1, setTeam1] = useState("");
   const [team2, setTeam2] = useState("");
   const [capital, setCapital] = useState("");
-  const [data, setData] = useState(null);
   const [teamSuggestions, setTeamSuggestions] = useState([]);
-  const [selectedTeam, setSelectedTeam] = useState(null);
+  const [selectedTeam1, setSelectedTeam1] = useState(null);
+  const [selectedTeam2, setSelectedTeam2] = useState(null);
+  const [data, setData] = useState(null);
 
   const API_KEY = "SUA_CHAVE_DE_API";
 
-  const searchTeams = async (query, setTeam) => {
+  const searchTeams = async (query, setSuggestions) => {
     if (query.length < 3) return;
     const response = await fetch(`https://v3.football.api-sports.io/teams?search=${query}`, {
       method: "GET",
@@ -23,7 +22,9 @@ export default function GoalAnalysis() {
     });
     const data = await response.json();
     if (data.response.length > 0) {
-      setTeamSuggestions(data.response);
+      setSuggestions(data.response.map(team => ({ id: team.team.id, name: team.team.name })));
+    } else {
+      setSuggestions([]);
     }
   };
 
@@ -43,15 +44,18 @@ export default function GoalAnalysis() {
     const stddev = Math.sqrt(variance);
     const bttsProbability = goalsFor.filter(g => g > 0).length / goalsFor.length;
 
-    return { team: selectedTeam, averageFor, averageAgainst, stddev, goalsFor, goalsAgainst, bttsProbability };
+    return { averageFor, averageAgainst, stddev, goalsFor, goalsAgainst, bttsProbability };
   };
 
   const analyzeTeams = async () => {
-    if (!selectedTeam) return alert("Selecione um time válido!");
-    const team1Data = await fetchTeamData(selectedTeam.id);
-    const team2Data = await fetchTeamData(selectedTeam.id);
-    if (!team1Data || !team2Data) return alert("Time não encontrado!");
-    setData([team1Data, team2Data]);
+    if (!selectedTeam1 || !selectedTeam2) return alert("Selecione dois times válidos!");
+    const team1Data = await fetchTeamData(selectedTeam1.id);
+    const team2Data = await fetchTeamData(selectedTeam2.id);
+    if (!team1Data || !team2Data) return alert("Erro ao buscar dados dos times!");
+    setData([
+      { team: selectedTeam1.name, ...team1Data },
+      { team: selectedTeam2.name, ...team2Data }
+    ]);
   };
 
   return (
@@ -63,18 +67,37 @@ export default function GoalAnalysis() {
           value={team1}
           onChange={(e) => {
             setTeam1(e.target.value);
-            searchTeams(e.target.value, setSelectedTeam);
+            searchTeams(e.target.value, setTeamSuggestions);
           }}
         />
         {teamSuggestions.length > 0 && (
           <ul className="border p-2 rounded bg-white">
             {teamSuggestions.map((team) => (
-              <li key={team.team.id} className="cursor-pointer p-1 hover:bg-gray-200" onClick={() => setSelectedTeam(team.team)}>
-                {team.team.name}
+              <li key={team.id} className="cursor-pointer p-1 hover:bg-gray-200" onClick={() => { setSelectedTeam1(team); setTeam1(team.name); setTeamSuggestions([]); }}>
+                {team.name}
               </li>
             ))}
           </ul>
         )}
+        
+        <Input 
+          placeholder="Digite o nome do Time 2"
+          value={team2}
+          onChange={(e) => {
+            setTeam2(e.target.value);
+            searchTeams(e.target.value, setTeamSuggestions);
+          }}
+        />
+        {teamSuggestions.length > 0 && (
+          <ul className="border p-2 rounded bg-white">
+            {teamSuggestions.map((team) => (
+              <li key={team.id} className="cursor-pointer p-1 hover:bg-gray-200" onClick={() => { setSelectedTeam2(team); setTeam2(team.name); setTeamSuggestions([]); }}>
+                {team.name}
+              </li>
+            ))}
+          </ul>
+        )}
+        
         <Input placeholder="Capital disponível" type="number" value={capital} onChange={(e) => setCapital(e.target.value)} />
         <Button onClick={analyzeTeams} className="bg-blue-500 text-white p-2 rounded">Analisar</Button>
       </div>
