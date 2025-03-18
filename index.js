@@ -16,17 +16,23 @@ export default function GoalAnalysis() {
 
   const searchTeams = async (query, setSuggestions) => {
     if (query.length < 3) return;
+    console.log("Buscando times para:", query); // Verificar o que está sendo digitado
+
     const response = await fetch(`https://v3.football.api-sports.io/teams?search=${query}`, {
-      method: "GET",
-      headers: { "x-apisports-key": API_KEY },
+        method: "GET",
+        headers: { "x-apisports-key": API_KEY },
     });
+
     const data = await response.json();
+    console.log("Resposta da API:", data); // Verificar o que a API está retornando
+
     if (data.response.length > 0) {
-      setSuggestions(data.response.map(team => ({ id: team.team.id, name: team.team.name })));
+        setSuggestions(data.response.map(team => ({ id: team.team.id, name: team.team.name })));
     } else {
-      setSuggestions([]);
+        setSuggestions([]);
+        alert("Nenhum time encontrado. Tente outro nome!");
     }
-  };
+};
 
   const fetchTeamData = async (teamId) => {
     const matchesResponse = await fetch(`https://v3.football.api-sports.io/fixtures?team=${teamId}&last=10`, {
